@@ -6,6 +6,8 @@ import math
 import random
 from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
+import simple_geo
+import scipy.stats as ss
 
 class Utility():
 
@@ -568,16 +570,21 @@ class Foresee(Utility):
         if do_plot: return self.convert_to_hist_list(momenta_lab_all, weights_lab_all, do_plot=do_plot)[0]
 
 
+
+
     ###############################
     #  Counting Events
     ###############################
 
-    def set_detector(self,distance=480, selection="np.sqrt(x.x**2 + x.y**2)< 1", length=5, luminosity=3000, channels=None):
+    def set_detector(self,distance=480, selection="np.sqrt(x.x**2 + x.y**2)< 1", length=5, luminosity=3000, channels=None, geo=None):
         self.distance=distance
         self.selection=selection
         self.length=length
         self.luminosity=luminosity
         self.channels=channels
+        self.geo=geo
+        #if geo:
+        #    self.length=sum([L for (B,L) in geo])
     
     def event_passes(self,momentum):
         # obtain 3-momentum
@@ -588,7 +595,46 @@ class Foresee(Utility):
         # check if it passes
         if eval(self.selection): return True
         else:return False
-     
+
+
+    def get_seps(self, p, th, m, ctau, geo):
+        nsample=100
+        
+        ## Doing it properly with exponential
+        #L_avg=ctau*p/m
+        ##print(f"Avergage decay length = {L_avg}")
+        #
+        ## pdf for L inside decay volume
+        #def trunc_exp_rv(low, high, scale, size):
+        #    rnd_cdf = np.random.uniform(ss.expon.cdf(x=low, scale=scale),
+        #                                ss.expon.cdf(x=high, scale=scale),
+        #                                size=size)
+        #    return ss.expon.ppf(q=rnd_cdf, scale=scale)
+        #
+        ##Ls=[L for L in trunc_exp_rv(self.distance, self.distance+self.length, L_avg, nsample) if not math.isinf(L)]
+        #for L in Ls
+
+        
+        
+        # Assume exponential is flat where we care about
+        seps=[]
+        for n in range(nsample):
+            L=random.uniform(self.distance,self.distance+self.length)
+            #print("L",L,self.distance,self.distance+self.length)
+            pos_z=L-self.distance
+            s=simple_geo.calc_separation(p,m,self.geo,pos_z,th=th)
+            #print(f"th = {th}, dec vtx z = {pos_z} m, sep = {s*1e3} mm")
+            seps.append(s)
+
+        #print(f"Sum seps = {sum(seps)}, Len seps = {len(seps)}")
+        #eff=float(sum(pass_seps))/len(pass_seps)
+
+        #print(f"Efficiency for {sep_cut*1e6} um separation cut and {geo} geometry = {eff}")
+        #@todo: incident LLP angle
+        #@todo: apply cut to particles being separated outside the radius
+
+        return seps
+        
     def get_events(self, mass, energy,
             modes=None,
             couplings = np.logspace(-8,-3,51),
@@ -601,8 +647,9 @@ class Foresee(Utility):
         # setup different couplings to scan over
         model = self.model
         if modes is None: modes = [key for key in model.production.keys()]
-        ctaus, brs, nsignals, stat_t, stat_e, stat_w = [], [], [], [], [], []
+        ctaus, brs, nsignals, stat_t, stat_e, stat_sep, stat_w = [], [], [], [], [], [], []
         for coupling in couplings:
+            #print(f"   - Coupling {coupling}")
             ctau = model.get_ctau(mass, coupling)
             if self.channels is None: br = 1.
             else:
@@ -613,11 +660,12 @@ class Foresee(Utility):
             nsignals.append(0.)
             stat_t.append([])
             stat_e.append([])
+            stat_sep.append([])
             stat_w.append([])
     
         # loop over production modes
         for key in modes:
-            
+            #print(f" - Mode     {key}")            
             dirname = "files/models/"+self.model.model_name+"/LLP_spectra/"
             filename=dirname+energy+"TeV_"+key+"_m_"+str(mass)+".npy"
 
@@ -627,9 +675,14 @@ class Foresee(Utility):
                 particles_llp,weights_llp=self.convert_list_to_momenta(filename=filename, mass=mass,
                     filetype="npy", nsample=nsample, preselectioncut=preselectioncuts)
             except: continue
-    
+
             # loop over particles, and record probablity to decay in volume
+            pcount=0
             for p,w in zip(particles_llp,weights_llp):
+                #pcount=pcount+1
+                #pc=100.*float(pcount)/len(particles_llp)
+                #if pcount % 1000 == 0: print(f"  - {pc:.2f} %%")
+                
                 # check if event passes
                 if not self.event_passes(p): continue
                 # weight of this event
@@ -639,24 +692,32 @@ class Foresee(Utility):
                 for icoup,coup in enumerate(couplings):
                     #add event weight
                     ctau, br =ctaus[icoup], brs[icoup]
+                    #print(f"ctau: {ctau}")
+
+                    seps=[]
+                    if self.geo:
+                        #print("Calculating separation cut efficiency")
+                        seps=self.get_seps(p.p,p.pt/p.pz,mass,ctau,self.geo)
+                        
                     dbar = ctau*p.p/mass
                     prob_decay = math.exp(-self.distance/dbar)-math.exp(-(self.distance+self.length)/dbar)
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
                     nsignals[icoup] += weight_event * couplingfac * prob_decay * br
                     stat_t[icoup].append(p.pt/p.pz)
                     stat_e[icoup].append(p.e)
+                    stat_sep[icoup].append(seps)
                     stat_w[icoup].append(weight_event * couplingfac * prob_decay * br)
 
-        return couplings, ctaus, nsignals, stat_e, stat_w, stat_t
+        return couplings, ctaus, nsignals, stat_e, stat_w, stat_sep, stat_t
 
     ###############################
     #  Plotting
     ###############################
             
     def plot_reach(self,
-            setups,bounds,projections, bounds2=[],
-            title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
-            xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None,
+                   setups,bounds,projections, bounds2=[],
+                   title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
+                   xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None, sep=None,
         ):
         
         # initiate figure
@@ -703,9 +764,21 @@ class Foresee(Utility):
         
         # forward experiment sensitivity
         for setup in setups:
-            filename, label, color, ls, alpha, level = setup
-            masses,couplings,nsignals=np.load("files/models/"+self.model.model_name+"/results/"+filename, allow_pickle=True)
+            filename, label, color, ls, alpha, level, sep_cut = setup
+            masses,couplings,nsignals,seps=np.load("files/models/"+self.model.model_name+"/results/"+filename,allow_pickle=True)
             m, c = np.meshgrid(masses, couplings)
+            if sep_cut:
+                for i,nsignal in enumerate(nsignals):
+                    #print(len(seps),len(seps[i]),len(seps[i][0]))
+                    sep_dec=[]
+                    for s in seps[i]:
+                        for e in s:
+                            sep_dec.extend([1 if x > sep_cut else 0 for x in e])
+                                           
+                    print("Eff =",float(sum(sep_dec))/len(sep_dec))
+                    nsignals[i]=[n*float(sum(sep_dec))/len(sep_dec) for n in nsignals[i]]
+                    
+                
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls)
             ax.contourf(m,c,n, levels=[np.log10(level),10**10],colors=color,zorder=zorder, alpha=alpha)
