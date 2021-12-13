@@ -2,14 +2,38 @@ import numpy as np
 from src.foresee import Foresee, Utility, Model
 import os
 from matplotlib import pyplot as plt
+import random, math
+
+def unweight_events(energies, thetas, weights, number):
+    
+    #initialize arrays and random number generator
+    random.seed()
+    unweighted_thetas=[]
+    unweighted_energies=[]
+    unweighted_weights=[]
+    total_weight = np.sum(weights)
+    event_weight = total_weight/float(number)
+    
+    #unweighting
+    for irand in range (number):
+        stopweight = random.random()*total_weight
+        partid, weightsum = 0, 0
+        while weightsum < stopweight: 
+            weightsum+=weights[partid]
+            partid+=1
+        unweighted_thetas.append(thetas[partid])
+        unweighted_energies.append(energies[partid])
+        unweighted_weights.append(event_weight)
+        
+    return  np.array(unweighted_energies), np.array(unweighted_thetas), np.array(unweighted_weights)
 
 
 run_plotpions=False
 run_setupmodel=True
 run_LLPspectra=False
-run_rateexample=False
-run_setupscans=True
-run_plotseparations=True
+run_rateexample=True
+run_setupscans=False
+run_plotseparations=False
 run_runscans=False
 run_plotreach=False
 
@@ -123,6 +147,9 @@ masses = [
     2.8184,  3.1623,  3.9811,  5.0119,  6.3096,  7.9433, 10.    
 ]
 
+masses = [ 0.01  ,  0.1,  1.0, 10. ]
+
+    
 ##########
 # Generate LLP Spectra
 if run_LLPspectra:    
@@ -149,7 +176,7 @@ if run_rateexample:
     
     ## To count the #decays in detector volume need detector geometry
     ## These are FASER2 defaults
-    distance, selection, length, luminosity, channels, geo = 480, "np.sqrt(x.x**2 + x.y**2)< 1", 5, 3000, None, [(0.5,1.5)]
+    distance, selection, length, luminosity, channels, geo = 480, "np.sqrt(x.x**2 + x.y**2)< 1", 5, 3000, None, None #[(0.5,1.5)]
     foresee.set_detector(distance=distance, selection=selection, length=length, luminosity=luminosity, channels=channels,geo=geo)
     
     
@@ -157,8 +184,70 @@ if run_rateexample:
     ## For one dark photon (m_A'=100 MeV) look at how many particles decay inside the decay volume.
     mass = 0.1
     print(np.logspace(-8,-3,6))
-    output = foresee.get_events(mass=0.1, energy=energy, couplings=np.logspace(-8,-3,6), )
-    coups, ctaus, nsigs, energies, weights, seps, _ = output
+    output = foresee.get_events(mass=0.1, energy=energy, couplings=np.logspace(-8,-3,3),nsample=500 )
+    coups, ctaus, nsigs, energies, weights, seps, thetas = output
+    print("TEST1",len(energies))
+    print("TEST2",len(energies[0]))
+    
+    weighted_energies, weighted_thetas, weighted_weights = energies[0], thetas[0], weights[0]
+    unweighted_energies, unweighted_thetas, unweighted_weights = unweight_events (energies[0], thetas[0], weights[0], int(len(energies[0])/10))
+   
+    print("TEST3",len(unweighted_energies))
+    
+    datax=[]
+    datay=[]
+    dataz=[]
+    datae=[]
+    dataw=[]
+    #print "INFO:   - Unweighted energies":
+    #print unweighted_energies
+    
+    # get events
+    f= open("output.hepmc","w")
+    f.write("\nHepMC::Version 2.06.09\n")
+    f.write("HepMC::IO_GenEvent-START_EVENT_LISTING\n")
+    for i,(theta,energy,weight) in enumerate(zip(unweighted_thetas, unweighted_energies, unweighted_weights)):
+        
+        #Event Info
+        f.write("E %s -1 -1.0000000000000000e+00 -1.0000000000000000e+00 -1.0000000000000000e+00 20 0 1 1 2 0 0\n"%(i+1))
+        #f.write("N 1 \"0\" \n")
+        f.write("U GEV MM\n")
+        #f.write("C "+str(weight)+" 0 \n")
+        
+        #vertex
+        posz = random.uniform(0,length)*1000.
+        phi  = random.uniform(-math.pi,math.pi)
+        posy = theta*480.*1000*np.sin(phi)
+        posx = theta*480.*1000*np.cos(phi) 
+        post = 3.*10**8 * np.sqrt(posz**2 + posy**2 + posz**2)
+        f.write("V -1 0 ")
+        f.write(str(posx)+" ")
+        f.write(str(posy)+" ")
+        f.write(str(posz)+" ")
+        f.write(str(post)+" ")
+        f.write("0 2 0\n")
+        datax.append(posx)
+        datay.append(posy)
+        dataz.append(posz)
+        datae.append(energy)
+        dataw.append(weight)
+        
+        #particles
+        particles = foresee.decay_llp(mass=0.1, energy=energy)
+        for n,particle in enumerate(particles):  
+            if n == 0 :
+                f.write("P "+str(n+1)+" 11 ")
+            else:
+                f.write("P "+str(n+1)+" -11 ")
+            f.write(str(particle.px)+" ")
+            f.write(str(particle.py)+" ")
+            f.write(str(particle.pz)+" ")
+            f.write(str(particle.e)+" ")
+            f.write("0 1 0 0 0 0\n")
+    f.write('HepMC::IO_GenEvent-END_EVENT_LISTING\n')
+    f.close()
+
+    
     for coup,ctau,nsig in zip(coups, ctaus, nsigs):
         print ("epsilon =", '{:5.3e}'.format(coup), ": nsignal =", '{:5.3e}'.format(nsig))
     
@@ -273,42 +362,44 @@ if run_setupscans:
             "separation":300e-6,
             #"refsetup":"F-default-test"
         },
-        "TEST_1m1T":{
-            "name":"1m 1T",
-            "color":"red",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.1",
-            "length":1,
-            "distance":480,
-            "lumi":140,
-            "channels": None,
-            "geo":[(1.,1)],
-            "separation":300e-6,
-            #"refsetup":"F-default-test"
-        },
-        "TEST_1p5m0p5T":{
-            "name":"1.5m 0.5T",
-            "color":"red",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.1",
-            "length":1.5,
-            "distance":480,
-            "lumi":140,
-            "channels": None,
-            "geo":[(0.5,1.5)],
-            "separation":300e-6,
-            #"refsetup":"F-default-test"
-        },
-        "F-default-sep-station0":{
-            "name":"F - Station1",
-            "color":"firebrick",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.1",
-            "length":1.5,
-            "distance":480,
-            "lumi":140,
-            "channels": None,
-            "geo":[(0.5,1.5)],
-            "separation":300e-6,
-            #"refsetup":"F-default-test"
-        },
+#        "TEST_1m1T":{
+#            "name":"1m 1T",
+#            "color":"red",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.1",
+#            "length":1,
+#            "distance":480,
+#            "lumi":140,
+#            "channels": None,
+#            "geo":[(1.,1)],
+#            "separation":300e-6,
+#            #"refsetup":"F-default-test"
+#        },
+#        "TEST_1p5m0p5T":{
+#            "name":"1.5m 0.5T",
+#            "color":"red",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.1",
+#            "length":1.5,
+#            "distance":480,
+#            "lumi":140,
+#            "channels": None,
+#            "geo":[(0.5,1.5)],
+#            "separation":300e-6,
+#            #"refsetup":"F-default-test"
+#        },
+#        "F-default-sep-station0":{
+#            "name":"F - Station1",
+#            "color":"firebrick",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.1",
+#            "length":1.5,
+#            "distance":480,
+#            "lumi":140,
+#            "channels": None,
+#            "geo":[(0.5,1.5)],
+#            "separation":300e-6,
+#            #"refsetup":"F-default-test"
+#        },
+
+
 ##        "F-500um":{
 ##            "name":"F - 500 um",
 ##            "color":"coral",

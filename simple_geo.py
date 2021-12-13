@@ -1,20 +1,24 @@
 import math
 
 
-def get_deflection(p,B,L,verbose=False):
+def get_deflection(p,B,L,q,verbose=False):
     
-    #if verbose:
-    #    print(f"Momentum:   {p:.2f} GeV/c")
-    #    print(f"B field:    {B:.2f} T")
-    #    print(f"Length:     {L:.2f} m")
+    if verbose:
+        print(f"Momentum:   {p:.2f} GeV/c")
+        print(f"B field:    {B:.2f} T")
+        print(f"Length:     {L:.2f} m")
 
 
     # radius of curvature
-    R = p / (0.3 * B)
+    R = p / (q * 0.3 * B)
     
     if verbose: print(f"Radius:     {R:.2f} m")
     
     # theta - angle showing how far through circular trajectory particle is
+    if L/R > 1 or L/R < -1:
+        print(f"L: {L}, R: {R}")
+        #return None
+    
     th = math.asin( L / R )
     #if verbose: print(f"Theta:      {th*1000.:.2f} mrad")
 
@@ -23,7 +27,7 @@ def get_deflection(p,B,L,verbose=False):
         
     return th,d
 
-def process_geo(p,m,a,geo,pos_z=None,verbose=False):
+def process_geo(p,a,geo,pos_z=None,verbose=False,q=1):
     tot_d=0
         
     # iterate through geometry
@@ -48,7 +52,7 @@ def process_geo(p,m,a,geo,pos_z=None,verbose=False):
             B_prime=B*math.cos(a)
             
             #th,d_prime,s_prime=get_deflection(p_prime,B_prime,L_prime)
-            th,d_prime=get_deflection(p,B,L_prime)
+            th,d_prime=get_deflection(p,B,L_prime,q)
             #if verbose: print(f"theta:      {th} rad")
             
             d_a=L*math.tan(a)       
@@ -73,10 +77,9 @@ def process_geo(p,m,a,geo,pos_z=None,verbose=False):
 
     return tot_d
 
-def calc_separation(p,m,geo,pos_z=None,th=None):
-    #if True or verbose:
-    #    print(f"Momentum:   {p} GeV/c")
-    #    print(f"Mass:       {m} GeV/c^2")
+def calc_separation(p,geo,pos_z=None,th=None,q=1):
+    #if verbose:
+    #    print(f"\nMomentum:   {p} GeV/c")
     #
     #    print("\nGeometry:")
     #    for n,g in enumerate(geo):
@@ -84,18 +87,25 @@ def calc_separation(p,m,geo,pos_z=None,th=None):
         
     tot_d=0
 
-    a=0.5*m/p
-    if th:
-        a+th
-        
-    d=process_geo(p,m,a,geo,pos_z=pos_z)
+    #this is for old version when I didn't have decayed particles already
+    #a=0.5*m/p
 
-    (B,L)=geo[0]
-
-    if pos_z:
-        L=L-pos_z
+    # getting angle from decay procuct theta
+    a=th
     
-    tot_d=2.*d
+    #need to think more carefully about this - for now just assuming incidence is parallel to beam
+    #if th:
+    #    a=a+th
+    
+    
+    d=process_geo(p,a,geo,pos_z=pos_z,q=1)
+
+    #(B,L)=geo[0]
+
+    #if pos_z:
+    #    L=L-pos_z
+    
+    #tot_d=2.*d
     
         
     #if verbose:
@@ -104,4 +114,5 @@ def calc_separation(p,m,geo,pos_z=None,th=None):
     ##print(f"Incoming theta: {th*1e3:.2f} mrad")
     #print(f"Tofal separation: {tot_d*1e6:.2f} um")
 
-    return tot_d
+    #return tot_d
+    return d

@@ -13,11 +13,14 @@ run_runscans=False
 run_plotreach=True
 
 scan_search=None
-scan_search="F2"
-scan_search="S1"
-scan_search="S2"
-scan_search="S3"
+scan_search={"F2":["F2"]}
+scan_search={"S1":["S1"]}
+scan_search={"S2":["S2"]}
+scan_search={"S3":["S3"]}
 
+scan_name="pick"
+scan_search={"pick":["F2-default","S1-L1p5-D2","S2-L2-D2","S3-L10-D1","S3-L10-D2"]}
+scan_search={"pick":["F2-default","S1-L1p5-D1","S1-L1p5-D2","S2-L10-D1","S2-L10-D2"]}
 
 #############
 # Initialization
@@ -167,7 +170,7 @@ if run_rateexample:
         ax.hist(en, weights=weight, bins=np.logspace(2,4, 20), histtype='step', label=r"$\epsilon=$"+str(coup)) 
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_ylim(10**-7,10**5) 
+        ax.set_ylim(10**-8,10**5) 
         ax.set_xlabel("E(A') [GeV]") 
         ax.set_ylabel("Number of Events per bin") 
         ax.legend(frameon=False, labelspacing=0)
@@ -188,8 +191,9 @@ if run_setupscans:
 
     setup_dict={
         "F2-default":{
-            "name":"F2 L=5m D=2m (Default)",
-            "color":"maroon",
+            "name":"F2 L=5m D=2m",# (Default)",
+            #"color":"maroon",
+            "color":"firebrick",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
             "length":5,
             "distance":480,
@@ -214,6 +218,7 @@ if run_setupscans:
         "S1-L1p5-D2":{
             "name":"S1 L=1.5m D=2m",
             "color":"rebeccapurple",
+            #"color":"darkorchid",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
             "length":1.5,
             "distance":497,
@@ -235,50 +240,52 @@ if run_setupscans:
             "distance":497,
             "channels": None
         },
-        "S2-L2-D2":{
-            "name":"S2 L=2m D=2m",
-            "color":"darkorange",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
-            "length":2,
-            "distance":500,
-            "channels": None
-        },
-        "S2-L2-D1":{
-            "name":"S2 L=2m D=1m",
+#        "S2-L2-D2":{
+#            "name":"S2 L=2m D=2m",
+#            "color":"darkorange",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
+#            "length":2,
+#            "distance":500,
+#            "channels": None
+#        },
+#        "S2-L2-D1":{
+#            "name":"S2 L=2m D=1m",
+#            "color":"orange",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
+#            "length":2,
+#            "distance":500,
+#            "channels": None
+#        },
+#        "S2-L2-D0p5":{
+#            "name":"S2 L=2m D=0.5m",
+#            "color":"navajowhite",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
+#            "length":2,
+#            "distance":500,
+#            "channels": None
+#        },
+        "S2-L10-D2":{
+            "name":"S2 L=10m D=2m",
+            ##"color":"royalblue",
+            #"color":"darkgreen",
             "color":"orange",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
-            "length":2,
-            "distance":500,
-            "channels": None
-        },
-        "S2-L2-D0p5":{
-            "name":"S2 L=2m D=0.5m",
-            "color":"navajowhite",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
-            "length":2,
-            "distance":500,
-            "channels": None
-        },
-        "S3-L10-D2":{
-            "name":"S3 L=10m D=2m",
-            #"color":"royalblue",
-            "color":"darkgreen",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
             "length":10,
             "distance":615,
             "channels": None
         },
-        "S3-L10-D1":{
-            "name":"S3 L=10m D=1m",
-            #"color":"cornflowerblue",
-            "color":"forestgreen",
+        "S2-L10-D1":{
+            "name":"S2 L=10m D=1m",
+            ##"color":"cornflowerblue",
+            #"color":"forestgreen",
+            "color":"navajowhite",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
             "length":10,
             "distance":615,
             "channels": None
         },
-        "S3-L10-D0p5":{
-            "name":"S3 L=10m D=0.5m",
+        "S2-L10-D0p5":{
+            "name":"S2 L=10m D=0.5m",
             #"color":"lightsteelblue",
             "color":"limegreen",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
@@ -306,7 +313,7 @@ if run_runscans:
         #### Get reach 
         list_nevents = []    
         for mass in masses:
-            couplings, _, nevents, _, _ , _ = foresee.get_events(mass=mass, energy=energy)
+            couplings, _, nevents, _, _ , _, _ = foresee.get_events(mass=mass, energy=energy)
             list_nevents.append(nevents)  
             
         #### Save results
@@ -323,10 +330,9 @@ if run_plotreach:
     #Now let's plot the results. We first specify all detector setups for which we want to show result (filename in model/results directory, label, color, linestyle, opacity alpha for filled contours, required number of events).
     
     setups=[]
-    if not scan_search:
-        setups = [ ["14TeV_%s.npy"%setup, setup_dict[setup]["name"],setup_dict[setup]["color"], "solid", 0., 3] for setup in setup_dict ]
-    else:
-        setups = [ ["14TeV_%s.npy"%setup, setup_dict[setup]["name"],setup_dict[setup]["color"], "solid", 0., 3] for setup in setup_dict if scan_search in setup]
+    for setup in setup_dict:
+        if not scan_search or setup in scan_search[scan_name]:
+            setups.append(["14TeV_%s.npy"%setup, setup_dict[setup]["name"],setup_dict[setup]["color"], "solid", 0., 3, None])
 
     
     print(f"INFO   :     - Found {len(setups)} setups")
@@ -347,18 +353,18 @@ if run_plotreach:
     
     
     #We then specify other projected sensitivitities (filename in model/bounds directory, color, label, label position x, label position y, label rotation)
-    
-    projections = [
-        ["limits_SeaQuest.txt",   "lime",         "SeaQuest", 1.350, 2.1*10**-7, 0  ],
-        ["limits_NA62.txt",       "limegreen",    "NA62"    , 0.999, 1.1*10**-7, 0  ],
-        ["limits_SHiP.txt",       "forestgreen",  "SHiP"    , 1.750, 8.2*10**-7, 0  ],
-        ["limits_HPS.txt",        "deepskyblue",  "HPS"     , 0.050, 1.5*10**-4, 0  ],
-        ["limits_HPS-1.txt",      "deepskyblue",  None      , 0    , 0         , 0  ],
-        ["limits_Belle2.txt",     "blue",         "Belle2"  , 0.570, 1.3*10**-4, 0  ],
-        ["limits_LHCb.txt",       "dodgerblue",   "LHCb"    , 0.135, 2.8*10**-4, 0  ],
-        ["limits_LHCb-mumu1.txt", "dodgerblue",   None      , 0    , 0         , 0  ],
-        ["limits_LHCb-mumu2.txt", "dodgerblue",   None      , 0    , 0         , 0  ],
-    ]
+    projections = []
+    #projections = [
+    #    ["limits_SeaQuest.txt",   "lime",         "SeaQuest", 1.350, 2.1*10**-7, 0  ],
+    #    ["limits_NA62.txt",       "limegreen",    "NA62"    , 0.999, 1.1*10**-7, 0  ],
+    #    ["limits_SHiP.txt",       "forestgreen",  "SHiP"    , 1.750, 8.2*10**-7, 0  ],
+    #    ["limits_HPS.txt",        "deepskyblue",  "HPS"     , 0.050, 1.5*10**-4, 0  ],
+    #    ["limits_HPS-1.txt",      "deepskyblue",  None      , 0    , 0         , 0  ],
+    #    ["limits_Belle2.txt",     "blue",         "Belle2"  , 0.570, 1.3*10**-4, 0  ],
+    #    ["limits_LHCb.txt",       "dodgerblue",   "LHCb"    , 0.135, 2.8*10**-4, 0  ],
+    #    ["limits_LHCb-mumu1.txt", "dodgerblue",   None      , 0    , 0         , 0  ],
+    #    ["limits_LHCb-mumu2.txt", "dodgerblue",   None      , 0    , 0         , 0  ],
+    #]
     
     # Finally, we can plot everything using foresee.plot_reach(). It returns a matplotlib instance, to which we can add further lines and which we can show or save. Below, we add the dark matter relict target line for a specific benchmark.
     plot = foresee.plot_reach(
@@ -370,18 +376,18 @@ if run_plotreach:
         ylims=[10**-7,0.002],
         xlabel=r"Dark Photon Mass $m_{A'}$ [GeV]", 
         ylabel=r"Kinetic Mixing $\epsilon$",
-        legendloc=(1,0.68),
+        legendloc=(1.02,0.72),
         figsize=(8,6),
     )
     
-    data = foresee.readfile("files/models/"+modelname+"/lines/scalar_DM_Oh2_intermediate_eps_vs_mAprime.txt")
-    plot.plot(data.T[0], data.T[1], color="k", lw=2)
-    plot.text(0.010, 3.40*10**-5, "relic target",  fontsize=13,color="k",rotation=25)
-    plot.text(0.011, 2.15*10**-5, r"$m_\chi\!=\!0.6 m_{A'}$",fontsize=13,color="k",rotation=25)
-    plot.text(0.013, 1.20*10**-5, r"$\alpha_D\!=\!0.6$",fontsize=13,color="k",rotation=25)
+    #data = foresee.readfile("files/models/"+modelname+"/lines/scalar_DM_Oh2_intermediate_eps_vs_mAprime.txt")
+    #plot.plot(data.T[0], data.T[1], color="k", lw=2)
+    #plot.text(0.010, 3.40*10**-5, "relic target",  fontsize=13,color="k",rotation=25)
+    #plot.text(0.011, 2.15*10**-5, r"$m_\chi\!=\!0.6 m_{A'}$",fontsize=13,color="k",rotation=25)
+    #plot.text(0.013, 1.20*10**-5, r"$\alpha_D\!=\!0.6$",fontsize=13,color="k",rotation=25)
     
     plot.subplots_adjust(left=0.12, right=0.97, bottom=0.10, top=0.95)
-    plot.savefig("NewConfigs_v2-DarkPhoton-EPOSLHC-Reach%s.pdf"%("_"+scan_search if scan_search else ""))
+    plot.savefig("NewConfigs_v2-DarkPhoton-EPOSLHC-Reach%s.pdf"%("_"+scan_name if scan_search else ""))
     #plot.show()
 
 

@@ -596,35 +596,73 @@ class Foresee(Utility):
         if eval(self.selection): return True
         else:return False
 
+    def decay_llp(self, mass,energy):
+        
+        #randomly choose angles
+        costh = random.uniform(-1.,1.)
+        phi = random.uniform(-math.pi,math.pi)
+        
+        #4-momentum of p1 and p2 in ALP rest frame 
+        pz = mass/2. * costh
+        py = mass/2. * math.sqrt(1.-costh*costh) * np.sin(phi)
+        px = mass/2. * math.sqrt(1.-costh*costh) * np.cos(phi)
+        p1 = LorentzVector( px, py, pz,mass/2.)
+        p2 = LorentzVector(-px,-py,-pz,mass/2.)
+        
+        #boost decay products in lab restframe
+        xxx=math.sqrt(energy**2-mass**2)
+        p0 = LorentzVector(0,0,math.sqrt(energy**2-mass**2),energy)
+        p1_=p1.boost(-1.*p0.boostvector)
+        p2_=p2.boost(-1.*p0.boostvector)
+    
+        return p1_, p2_
 
-    def get_seps(self, p, th, m, ctau, geo):
+    def get_seps(self, p, e, th, m, ctau, geo):
         nsample=100
-        
-        ## Doing it properly with exponential
-        #L_avg=ctau*p/m
-        ##print(f"Avergage decay length = {L_avg}")
-        #
-        ## pdf for L inside decay volume
-        #def trunc_exp_rv(low, high, scale, size):
-        #    rnd_cdf = np.random.uniform(ss.expon.cdf(x=low, scale=scale),
-        #                                ss.expon.cdf(x=high, scale=scale),
-        #                                size=size)
-        #    return ss.expon.ppf(q=rnd_cdf, scale=scale)
-        #
-        ##Ls=[L for L in trunc_exp_rv(self.distance, self.distance+self.length, L_avg, nsample) if not math.isinf(L)]
-        #for L in Ls
-
-        
-        
-        # Assume exponential is flat where we care about
+        print(p,m,e)
         seps=[]
         for n in range(nsample):
-            L=random.uniform(self.distance,self.distance+self.length)
-            #print("L",L,self.distance,self.distance+self.length)
-            pos_z=L-self.distance
-            s=simple_geo.calc_separation(p,m,self.geo,pos_z,th=th)
-            #print(f"th = {th}, dec vtx z = {pos_z} m, sep = {s*1e3} mm")
-            seps.append(s)
+            #vertex
+            posz = random.uniform(0,self.length)
+            #posz=0
+            phi  = random.uniform(-math.pi,math.pi)
+            posy = th*self.distance*np.sin(phi)
+            posx = th*self.distance*np.cos(phi) 
+
+            #print(f"th = {th*1e6:.2f} urad, dec vtx x,y,z = {posx:.2f},{posy:.2f},{posz:.2f} m")
+                        
+            #decay products
+            p1,p2 = self.decay_llp(m,e)           
+
+            if p < 900 or p < 1100:
+                continue
+
+            if p1.p < 10 or p2.p < 10:
+                continue
+            # dx = L * tan(th_x) = L * px / pz
+            L=sum([L for (B,L) in geo])-posz
+            #print(L)
+            d1x=L*p1.px/p1.pz
+            d2x=L*p2.px/p2.pz
+
+            th1=math.atan(p1.py/p1.pz)
+            th2=math.atan(p2.py/p2.pz)
+            
+            d1y=simple_geo.calc_separation(p1.p,self.geo,pos_z=posz,th=th1,q=1)
+            d2y=simple_geo.calc_separation(p2.p,self.geo,pos_z=posz,th=th2,q=-1)
+            #d2y=simple_geo.calc_separation(p2.p,self.geo,pos_z=posz,th=th2,q=1)
+            
+            d1y_noB=L*p1.py/p1.pz
+            d2y_noB=L*p2.py/p2.pz
+            #print(f"d1y noB: {d1y_noB}, d1y B: {d1y}")
+            #print(f"d2y noB: {d2y_noB}, d2y B: {d2y}")
+            
+            sep=math.sqrt(((d1x-d2x)*(d1x-d2x))+((d1y-d2y)*(d1y-d2y)))
+
+            #print(f"p1 p, dx,dy th = {p1.p:.2f} GeV {d1x*1e3:.2f},{d1y*1e3:.2f} mm {th1*1e3:.2f} mrad")
+            #print(f"p2 p, dx,dy th = {p2.p:.2f} GeV {d2x*1e3:.2f},{d2y*1e3:.2f} mm {th2*1e3:.2f} mrad")
+            #print(f" sep = {sep*1e3:.2f} mm")
+            seps.append(sep)
 
         #print(f"Sum seps = {sum(seps)}, Len seps = {len(seps)}")
         #eff=float(sum(pass_seps))/len(pass_seps)
@@ -697,8 +735,8 @@ class Foresee(Utility):
                     seps=[]
                     if self.geo:
                         #print("Calculating separation cut efficiency")
-                        seps=self.get_seps(p.p,p.pt/p.pz,mass,ctau,self.geo)
-                        
+                        seps=self.get_seps(p.p,p.e,p.pt/p.pz,mass,ctau,self.geo)
+
                     dbar = ctau*p.p/mass
                     prob_decay = math.exp(-self.distance/dbar)-math.exp(-(self.distance+self.length)/dbar)
                     couplingfac = model.get_production_scaling(key, mass, coup, coup_ref)
@@ -765,7 +803,11 @@ class Foresee(Utility):
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level, sep_cut = setup
-            masses,couplings,nsignals,seps=np.load("files/models/"+self.model.model_name+"/results/"+filename,allow_pickle=True)
+            if sep_cut:
+                masses,couplings,nsignals,seps=np.load("files/models/"+self.model.model_name+"/results/"+filename,allow_pickle=True)
+            else:
+                masses,couplings,nsignals=np.load("files/models/"+self.model.model_name+"/results/"+filename,allow_pickle=True)
+                
             m, c = np.meshgrid(masses, couplings)
             if sep_cut:
                 for i,nsignal in enumerate(nsignals):
@@ -775,7 +817,7 @@ class Foresee(Utility):
                         for e in s:
                             sep_dec.extend([1 if x > sep_cut else 0 for x in e])
                                            
-                    print("Eff =",float(sum(sep_dec))/len(sep_dec))
+                    #print("Eff =",float(sum(sep_dec))/len(sep_dec))
                     nsignals[i]=[n*float(sum(sep_dec))/len(sep_dec) for n in nsignals[i]]
                     
                 
@@ -796,3 +838,4 @@ class Foresee(Utility):
         ax.legend(loc="upper right", bbox_to_anchor=legendloc, frameon=False, labelspacing=0)
         
         return plt
+

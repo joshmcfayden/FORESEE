@@ -13,11 +13,15 @@ run_runscans=False
 run_plotreach=True
 
 scan_search=None
-#scan_search="F2"
-#scan_search="S1"
-#scan_search="S2"
-scan_search="S3"
+scan_search={"F2":["F2"]}
+scan_search={"S1":["S1"]}
+scan_search={"S2":["S2"]}
+scan_search={"S3":["S3"]}
 
+scan_name="pick"
+#scan_search={"pick":["F2-default","S1-L1p5-D1","S1-L2-D2","S3-L10-D1","S3-L10-D2"]}
+#scan_search={"pick":["F2-default","S1-L1p5-D2","S2-L2-D2","S3-L10-D1","S3-L10-D2"]}
+scan_search={"pick":["F2-default","S1-L1p5-D1","S1-L1p5-D2","S2-L10-D1","S2-L10-D2"]}
     
 #############
 # Initialization
@@ -200,11 +204,12 @@ if run_setupscans:
     
     ## Get the LLP sensitivity reach for different detector configuraions. Just need to loop over different masses and use the previously introduced funtion get_events
     
-    
+
     setup_dict={
         "F2-default":{
-            "name":"F2 L=5m D=2m (Default)",
-            "color":"maroon",
+            "name":"F2 L=5m D=2m",# (Default)",
+            #"color":"maroon",
+            "color":"firebrick",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
             "length":5,
             "distance":480,
@@ -229,6 +234,7 @@ if run_setupscans:
         "S1-L1p5-D2":{
             "name":"S1 L=1.5m D=2m",
             "color":"rebeccapurple",
+            #"color":"darkorchid",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
             "length":1.5,
             "distance":497,
@@ -250,50 +256,52 @@ if run_setupscans:
             "distance":497,
             "channels": None
         },
-        "S2-L2-D2":{
-            "name":"S2 L=2m D=2m",
-            "color":"darkorange",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
-            "length":2,
-            "distance":500,
-            "channels": None
-        },
-        "S2-L2-D1":{
-            "name":"S2 L=2m D=1m",
+#        "S2-L2-D2":{
+#            "name":"S2 L=2m D=2m",
+#            "color":"darkorange",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
+#            "length":2,
+#            "distance":500,
+#            "channels": None
+#        },
+#        "S2-L2-D1":{
+#            "name":"S2 L=2m D=1m",
+#            "color":"orange",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
+#            "length":2,
+#            "distance":500,
+#            "channels": None
+#        },
+#        "S2-L2-D0p5":{
+#            "name":"S2 L=2m D=0.5m",
+#            "color":"navajowhite",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
+#            "length":2,
+#            "distance":500,
+#            "channels": None
+#        },
+        "S2-L10-D2":{
+            "name":"S2 L=10m D=2m",
+            ##"color":"royalblue",
+            #"color":"darkgreen",
             "color":"orange",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
-            "length":2,
-            "distance":500,
-            "channels": None
-        },
-        "S2-L2-D0p5":{
-            "name":"S2 L=2m D=0.5m",
-            "color":"navajowhite",
-            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
-            "length":2,
-            "distance":500,
-            "channels": None
-        },
-        "S3-L10-D2":{
-            "name":"S3 L=10m D=2m",
-            #"color":"royalblue",
-            "color":"darkgreen",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
             "length":10,
             "distance":615,
             "channels": None
         },
-        "S3-L10-D1":{
-            "name":"S3 L=10m D=1m",
-            #"color":"cornflowerblue",
-            "color":"forestgreen",
+        "S2-L10-D1":{
+            "name":"S2 L=10m D=1m",
+            ##"color":"cornflowerblue",
+            #"color":"forestgreen",
+            "color":"navajowhite",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
             "length":10,
             "distance":615,
             "channels": None
         },
-        "S3-L10-D0p5":{
-            "name":"S3 L=10m D=0.5m",
+        "S2-L10-D0p5":{
+            "name":"S2 L=10m D=0.5m",
             #"color":"lightsteelblue",
             "color":"limegreen",
             "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
@@ -302,6 +310,108 @@ if run_setupscans:
             "channels": None
         },
     }
+
+#    setup_dict={
+#        "F2-default":{
+#            "name":"F2 L=5m D=2m (Default)",
+#            "color":"maroon",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
+#            "length":5,
+#            "distance":480,
+#            "channels": None
+#        },
+#        "F2-L5-D1":{
+#            "name":"F2 L=5m D=1m",
+#            "color":"firebrick",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
+#            "length":5,
+#            "distance":480,
+#            "channels": None
+#        },
+#        "F2-L5-D0p5":{
+#            "name":"F2 L=5m D=0.5m",
+#            "color":"indianred",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
+#            "length":5,
+#            "distance":480,
+#            "channels": None
+#        },
+#        "S1-L1p5-D2":{
+#            "name":"S1 L=1.5m D=2m",
+#            "color":"rebeccapurple",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
+#            "length":1.5,
+#            "distance":497,
+#            "channels": None
+#        },
+#        "S1-L1p5-D1":{
+#            "name":"S1 L=1.5m D=1m",
+#            "color":"darkorchid",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
+#            "length":1.5,
+#            "distance":497,
+#            "channels": None
+#        },
+#        "S1-L1p5-D0p5":{
+#            "name":"S1 L=1.5m D=0.5m",
+#            "color":"mediumorchid",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
+#            "length":1.5,
+#            "distance":497,
+#            "channels": None
+#        },
+##        "S2-L2-D2":{
+##            "name":"S2 L=2m D=2m",
+##            "color":"darkorange",
+##            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
+##            "length":2,
+##            "distance":500,
+##            "channels": None
+##        },
+##        "S2-L2-D1":{
+##            "name":"S2 L=2m D=1m",
+##            "color":"orange",
+##            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
+##            "length":2,
+##            "distance":500,
+##            "channels": None
+##        },
+##        "S2-L2-D0p5":{
+##            "name":"S2 L=2m D=0.5m",
+##            "color":"navajowhite",
+##            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
+##            "length":2,
+##            "distance":500,
+##            "channels": None
+##        },
+#        "S2-L10-D2":{
+#            "name":"S2 L=10m D=2m",
+#            #"color":"royalblue",
+#            "color":"darkgreen",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 1",
+#            "length":10,
+#            "distance":615,
+#            "channels": None
+#        },
+#        "S2-L10-D1":{
+#            "name":"S2 L=10m D=1m",
+#            #"color":"cornflowerblue",
+#            "color":"forestgreen",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.5",
+#            "length":10,
+#            "distance":615,
+#            "channels": None
+#        },
+#        "S2-L10-D0p5":{
+#            "name":"S2 L=10m D=0.5m",
+#            #"color":"lightsteelblue",
+#            "color":"limegreen",
+#            "selection":"np.sqrt(x.x**2 + x.y**2)< 0.25",
+#            "length":10,
+#            "distance":615,
+#            "channels": None
+#        },
+#    }
 
 if run_runscans:
     print("INFO   :   - Run each config")
@@ -320,7 +430,7 @@ if run_runscans:
         #### Get reach 
         list_nevents = []    
         for mass in masses:
-            couplings, _, nevents, _, _ , _ = foresee.get_events(mass=mass, energy=energy, modes=["5","-5"], couplings = np.logspace(-9,-2,71))
+            couplings, _, nevents, _, _ , _, _ = foresee.get_events(mass=mass, energy=energy, modes=["5","-5"], couplings = np.logspace(-9,-2,71))
             list_nevents.append(nevents)  
             
         #### Save results
@@ -337,11 +447,11 @@ if run_plotreach:
     #Now let's plot the results. We first specify all detector setups for which we want to show result (filename in model/results directory, label, color, linestyle, opacity alpha for filled contours, required number of events).
     
     setups=[]
-    if not scan_search:
-        setups = [ ["14TeV_%s.npy"%setup, setup_dict[setup]["name"],setup_dict[setup]["color"], "solid", 0., 3] for setup in setup_dict ]
-    else:
-        setups = [ ["14TeV_%s.npy"%setup, setup_dict[setup]["name"],setup_dict[setup]["color"], "solid", 0., 3] for setup in setup_dict if scan_search in setup]
+    for setup in setup_dict:
+        if not scan_search or setup in scan_search[scan_name]:
+            setups.append(["14TeV_%s.npy"%setup, setup_dict[setup]["name"],setup_dict[setup]["color"], "solid", 0., 3, None])
         
+
     print(f"INFO   :     - Found {len(setups)} setups")
     #Then we specify all the existing bounds (filename in model/bounds directory, label, label position x, label position y, label rotation)
     
@@ -351,21 +461,23 @@ if run_plotreach:
         ["bounds_1612.08718.txt", "LHCb $B^+$"  , 2.500, 2.2*10**-3, 90 ],
         ["bounds_LSND.txt"      , "LSND"        , 0.250, 9.0*10**-5, 90 ],
         ["bounds_CHARM.txt"     , "CHARM"       , 0.250, 4.0*10**-4, 90 ],
-        ["bounds_MicroBoone.txt", "$\mu$BooNE"  , 0.138, 3.4*10**-4, 90 ],
+        ["bounds_MicroBoone.txt", "$\mu$BooNE"  , 0.138, 2.6*10**-4, 90 ],
         ["bounds_E949.txt"      , "E949"        , 0.102, 1.5*10**-4, 90 ],
         ["bounds_2011.11329.txt", "NA62 $K^+$"  , 0.170, 6.2*10**-4, 90 ],
         ["bounds_2010.07644.txt", "NA62 $\pi^+$", 0.125, 2.4*10**-3, 90 ],
     ]
-    
+
+
     
     #We then specify other projected sensitivitities (filename in model/bounds directory, color, label, label position x, label position y, label rotation)
-    
-    projections = [
-        ["limits_SHiP.txt",       "teal",         "SHiP"    , 2.700, 3.2*10**-5, 0  ],
-        ["limits_MATHUSLA.txt",   "dodgerblue",   "MATHUSLA", 0.120, 5.0*10**-6, 0  ],
-        ["limits_CodexB.txt",     "deepskyblue",  "CodexB"  , 1.700, 2.0*10**-5, 0  ],
-        ["limits_LHCb.txt",       "cyan",         "LHCb"    , 3.800, 1.0*10**-4, 0  ],
-    ]
+
+    projections = []
+    #projections = [
+    #    ["limits_SHiP.txt",       "teal",         "SHiP"    , 2.700, 3.2*10**-5, 0  ],
+    #    ["limits_MATHUSLA.txt",   "dodgerblue",   "MATHUSLA", 0.120, 5.0*10**-6, 0  ],
+    #    ["limits_CodexB.txt",     "deepskyblue",  "CodexB"  , 1.700, 2.0*10**-5, 0  ],
+    #    ["limits_LHCb.txt",       "cyan",         "LHCb"    , 3.800, 1.0*10**-4, 0  ],
+    #]
     
     # Finally, we can plot everything using foresee.plot_reach(). It returns a matplotlib instance, to which we can add further lines and which we can show or save. Below, we add the dark matter relict target line for a specific benchmark.
     plot = foresee.plot_reach(
@@ -374,15 +486,15 @@ if run_plotreach:
         projections=projections,
         title="Dark Higgs", 
         xlims=[0.1,10], 
-        ylims=[10**-5.5,10**-2.5],
+        ylims=[10**-5.5,10**-2.0],
         xlabel=r"Dark Higgs Mass $m_{\phi}$ [GeV]", 
         ylabel=r"Mixing $\theta$",
-        legendloc=(1.00,0.95),
+        legendloc=(0.43,0.25),
         figsize=(8,6),
     )
 
     plot.subplots_adjust(left=0.12, right=0.97, bottom=0.10, top=0.95)
-    plot.savefig("NewConfigs_v2-DarkHiggs-Pythia8-Reach%s.pdf"%("_"+scan_search if scan_search else ""))
+    plot.savefig("NewConfigs_v2-DarkHiggs-Pythia8-Reach%s.pdf"%("_"+scan_name if scan_search else ""))
 
 
 
