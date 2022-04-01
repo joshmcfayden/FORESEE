@@ -1,3 +1,11 @@
+# Running FORESEE for FASER2 studies
+
+The latest implementation of the DarkPhoton model with HepMC event generation of the decayed LLPs (to be passed to G4) can be run with:
+```bash
+python NewConfigs_v4-DarkPhoton.py
+```
+
+
 # FORESEE: FORward Experiment SEnsitivity Estimator
 
 **By Felix Kling and Sebastian Trojanowski**
