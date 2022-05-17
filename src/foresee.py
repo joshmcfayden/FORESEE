@@ -8,6 +8,7 @@ from skhep.math.vectors import LorentzVector, Vector3D
 from scipy import interpolate
 import simple_geo
 import scipy.stats as ss
+import csv
 
 class Utility():
 
@@ -488,7 +489,7 @@ class Foresee(Utility):
                         weight_sum+=w_mother*w_lpp*w_decay
                         if print_stats:
                             p = p_llp_lab
-                            if eval(stat_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
+                            if eval(stats_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
         
             # 3 body decays
             if model.production[key][0]=="3body":
@@ -518,7 +519,7 @@ class Foresee(Utility):
                         weight_sum+=w_mother*w_lpp*w_decay
                         if print_stats:
                             p = p_llp_lab
-                            if eval(stat_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
+                            if eval(stats_cuts): weight_sum_f+=w_mother*w_lpp*w_decay
     
             # mixing with SM particles
             if model.production[key][0]=="mixing":
@@ -619,7 +620,7 @@ class Foresee(Utility):
 
     def get_seps(self, p, e, th, m, ctau, geo):
         nsample=100
-        print(p,m,e)
+        #print(p,m,e)
         seps=[]
         for n in range(nsample):
             #vertex
@@ -755,7 +756,7 @@ class Foresee(Utility):
     def plot_reach(self,
                    setups,bounds,projections, bounds2=[],
                    title=None, xlabel=r"Mass [GeV]", ylabel=r"Coupling",
-                   xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None, sep=None,
+                   xlims=[0.01,1],ylims=[10**-6,10**-3], figsize=(7,5), legendloc=None, sepfile=None,
         ):
         
         # initiate figure
@@ -799,27 +800,51 @@ class Foresee(Utility):
             filename, label, posx, posy, rotation = bound
             if label is None: continue
             plt.text(posx, posy, label, fontsize=14, color="dimgray", rotation=rotation)
-        
+
+
+        csvdata=[]
+        if sepfile:
+            incsv=open(sepfile)
+            csv_rows=csv.reader(incsv)
+            csvdata=list(csv_rows)
+
+            
         # forward experiment sensitivity
         for setup in setups:
             filename, label, color, ls, alpha, level, sep_cut = setup
+
             if sep_cut:
-                masses,couplings,nsignals,seps=np.load("files/models/"+self.model.model_name+"/results/"+filename,allow_pickle=True)
+                filename=filename.split("_sep")[0]
+                modfilename="files/models/"+self.model.model_name+"/results/"+filename+".npy"
+                print("INFO:   Found sep - modifying name to:",modfilename)
+                masses,couplings,nsignals=np.load(modfilename,allow_pickle=True)
             else:
                 masses,couplings,nsignals=np.load("files/models/"+self.model.model_name+"/results/"+filename,allow_pickle=True)
+            
                 
             m, c = np.meshgrid(masses, couplings)
+            #print(nsignals)
+            #print(masses)
+            #print(couplings)
             if sep_cut:
-                for i,nsignal in enumerate(nsignals):
-                    #print(len(seps),len(seps[i]),len(seps[i][0]))
-                    sep_dec=[]
-                    for s in seps[i]:
-                        for e in s:
-                            sep_dec.extend([1 if x > sep_cut else 0 for x in e])
-                                           
-                    #print("Eff =",float(sum(sep_dec))/len(sep_dec))
-                    nsignals[i]=[n*float(sum(sep_dec))/len(sep_dec) for n in nsignals[i]]
-                    
+                for ic,coup in enumerate(couplings):
+                    for im,mass in enumerate(masses):
+                        eff=1.0
+                        #print(im,masses[im],ic,couplings[ic])
+                        #print(im,mass,ic,coup)
+                        for cmass,ccoup,csep,ceff in csvdata:
+                            #print("  ",mass,cmass,coup,ccoup,sep_cut,csep,abs((float(mass)-float(cmass))/float(cmass)),abs((float(coup)-float(ccoup))/float(ccoup)))
+                            if abs((float(mass)-float(cmass))/float(cmass))<0.01 and abs((float(coup)-float(ccoup))/float(ccoup))<0.01 and float(sep_cut)==float(csep):
+                                eff=float(ceff)
+                                #print(masses[im],cmass,couplings[ic],ccoup,sep_cut,csep,ceff)
+                                print("Found sep eff:",ceff)
+                                break
+                        if eff==1.0:
+                            print("NOT FOUND:",masses[im],couplings[ic],sep_cut)
+                        #print("JOsH",nsignals[im][ic])
+                        nsignals[im][ic]=nsignals[im][ic]*eff
+                        #print("JOsH",nsignals[im][ic])
+
                 
             n = np.log10(np.array(nsignals).T+1e-20)
             ax.contour (m,c,n, levels=[np.log10(level)]       ,colors=color,zorder=zorder, linestyles=ls)
